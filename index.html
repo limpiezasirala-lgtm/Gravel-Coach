@@ -4,15 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gravel Coach">
 <title>Gravel Coach</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui;background:#111;color:#fff;padding:20px}
+body{font-family:system-ui,Helvetica,sans-serif;background:#111;color:#fff;padding:20px}
 .card{background:#1C1C1E;border-radius:20px;padding:20px;margin-bottom:16px}
 .card-orange{background:#2A1208;border:1px solid #E8470A;border-radius:20px;padding:20px;margin-bottom:16px}
 .text-primary{color:#E8470A}
 .text-muted{color:#8E8E93}
-.flex-between{display:flex;justify-content:space-between}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.flex-around{display:flex;justify-content:space-around}
+.stat-value{font-size:28px;font-weight:800}
 </style>
 </head>
 <body>
@@ -25,18 +29,20 @@ body{font-family:system-ui;background:#111;color:#fff;padding:20px}
 <span>95 TSS</span>
 </div>
 </div>
+
 <div class="card">
 <div class="text-muted">🏆 PRÓXIMA CARRERA</div>
 <div style="font-size:18px;font-weight:700">Mundial Gravel</div>
 <div class="text-muted">10 de octubre de 2026 · 167 días</div>
 </div>
+
 <div class="card">
 <div class="text-muted">📊 ESTADO DE FORMA</div>
-<div class="flex-between" style="margin-top:12px">
-<div><span style="color:#30D158;font-size:24px;font-weight:800">85</span><br>FITNESS</div>
-<div><span style="color:#FF9F0A;font-size:24px;font-weight:800">92</span><br>FATIGA</div>
-<div><span style="color:#FF9F0A;font-size:24px;font-weight:800">-7</span><br>FORMA</div>
-<div><span style="font-size:24px;font-weight:800">290</span><br>FTP</div>
+<div class="flex-around" style="margin-top:12px">
+<div><span class="stat-value" style="color:#30D158">85</span><br><span class="text-muted">FITNESS</span></div>
+<div><span class="stat-value" style="color:#FF9F0A">92</span><br><span class="text-muted">FATIGA</span></div>
+<div><span class="stat-value" style="color:#FF9F0A">-7</span><br><span class="text-muted">FORMA</span></div>
+<div><span class="stat-value">290</span><br><span class="text-muted">FTP</span></div>
 </div>
 </div>
 </body>
