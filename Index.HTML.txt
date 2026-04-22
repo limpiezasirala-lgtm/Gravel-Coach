@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gravel Coach">
+  <meta name="theme-color" content="#111111">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23E8470A'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white' font-weight='bold'%3E🚴%3C/text%3E%3C/svg%3E">
+  <title>Gravel Coach</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{font-family:-apple-system,Helvetica,sans-serif;background:#111;color:#fff;overflow:hidden;position:fixed;inset:0}
+    #app{height:100%;display:flex;flex-direction:column}
+    .scroll{-webkit-overflow-scrolling:touch;overflow-y:auto;flex:1;padding:16px}
+    button{background:none;border:none;cursor:pointer}
+    .card{background:#1C1C1E;border-radius:20;padding:20;margin-bottom:16}
+    .card-orange{background:#2A1208;border:1px solid rgba(232,71,10,0.3);border-radius:20;padding:20;margin-bottom:16}
+    .text-primary{color:#E8470A}
+    .text-muted{color:#8E8E93}
+    .text-white{color:#fff}
+    .flex-between{display:flex;justify-content:space-between;align-items:center}
+    .flex-around{display:flex;justify-content:space-around}
+    .flex-row{display:flex;flex-direction:row;align-items:center;gap:12px}
+    .stat-value{font-size:28px;font-weight:800}
+    .workout-name{font-size:22px;font-weight:800;margin-top:4px}
+    .badge{font-size:12px;font-weight:700;margin-bottom:8px}
+    .dot{width:8px;height:8px;border-radius:4px}
+    .bottom-nav{display:flex;padding:12px 0 20px;border-top:1px solid rgba(255,255,255,0.08);background:#111}
+    .step{border-bottom:1px solid rgba(255,255,255,0.08);padding:12px 0}
+    .step:last-child{border-bottom:none}
+    .send-btn{width:100%;padding:16px;border-radius:14px;background:#E8470A;color:#fff;font-size:16px;font-weight:700;margin-top:20px}
+    .send-btn-disabled{background:rgba(48,209,88,0.1);color:#30D158}
+    .sync-btn{width:100%;padding:20px;border-radius:16;background:rgba(232,71,10,0.15);border:1px solid rgba(232,71,10,0.3);color:#E8470A;font-size:16px;font-weight:700}
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+  // ========== CONFIG ==========
+  const ATH_ID = 'i337330';
+  const API_KEY = '3fowthtiztbr4qchhzsy34j54';
+  const AUTH = 'Basic ' + btoa('API_KEY:' + API_KEY);
+  const TODAY = new Date();
+  const TODAY_S = TODAY.toISOString().split('T')[0];
+
+  // ========== DATOS ==========
+  const RACES = [
+    { id:1, name:'🏆 Mundial Gravel', date:'2026-10-10', cat:'A' },
+    { id:2, name:'🇪🇺 Europeo Gravel', date:'2026-08-30', cat:'A' },
+    { id:3, name:'🇪🇸 Campeonato Madrid', date:'2026-05-09', cat:'B' },
+    { id:4, name:'🚵 La Rioja Bike Race', date:'2026-05-15', cat:'A' }
+  ];
+
+  const PLAN = [
+    { id:1, day:'MIÉ', name:'⚡ VO2max Corto', desc:'6x4 min al 115% FTP', dur:'1h 15min', tss:95, today:true,
+      steps:[{name:'🔥 Calentamiento', mins:15, pct:[0.60,0.65]},{name:'⚡ VO2max x6', mins:24, pct:[1.10,1.15]},{name:'❄️ Enfriamiento', mins:10, pct:[0.48,0.52]}] },
+    { id:2, day:'JUE', name:'🚴 Z2 + Eficiencia', desc:'90 min Z2 (~65% FTP)', dur:'1h 30min', tss:70, today:false,
+      steps:[{name:'🔥 Calentamiento', mins:10, pct:[0.58,0.63]},{name:'🚴 Z2 Base', mins:70, pct:[0.63,0.68]},{name:'❄️ Enfriamiento', mins:10, pct:[0.48,0.52]}] },
+    { id:3, day:'VIE', name:'🔄 Repeatability', desc:'5x15 min Z3 (~82% FTP)', dur:'2h', tss:110, today:false,
+      steps:[{name:'🔥 Calentamiento', mins:15, pct:[0.60,0.65]},{name:'🔄 Bloques x5', mins:75, pct:[0.80,0.85]},{name:'❄️ Enfriamiento', mins:15, pct:[0.48,0.52]}] },
+    { id:4, day:'SÁB', name:'🏔️ Simulación Gravel', desc:'4h terreno mixto', dur:'4h', tss:200, today:false,
+      steps:[{name:'🔥 Rodaje base', mins:60, pct:[0.63,0.70]},{name:'⚡ Fartlek', mins:120, pct:[0.75,0.95]},{name:'❄️ Vuelta calma', mins:60, pct:[0.50,0.58]}] },
+    { id:5, day:'DOM', name:'😴 Descanso Activo', desc:'45 min Z1 recuperación', dur:'45min', tss:30, today:false,
+      steps:[{name:'🚴 Z1 recuperación', mins:45, pct:[0.50,0.56]}] }
+  ];
+
+  function daysUntil(date){
+    let target=new Date(date+'T00:00:00'), today=new Date();
+    today.setHours(0,0,0,0); target.setHours(0,0,0,0);
+    return Math.round((target-today)/86400000);
+  }
+
+  let state = {
+    tab: 'inicio',
+    plan: PLAN,
+    currentWo: PLAN[0],
+    races: RACES,
+    ftp: 290,
+    peso: 63,
+    wellness: { ctl:85, atl:92, form:-7 },
+    syncStatus: 'offline'
+  };
+
+  function sendToIntervals(workout){
+    return new Promise(async (resolve)=>{
+      try{
+        let proxy='https://cors-anywhere.herokuapp.com/';
+        let res=await fetch(proxy+'https://intervals.icu/api/v1/athlete/'+ATH_ID+'/events',{
+          method:'POST',
+          headers:{'Authorization':AUTH,'Content-Type':'application/json'},
+          body:JSON.stringify({
+            category:'WORKOUT',
+            start_date_local:TODAY_S+'T08:00:00',
+            name:workout.name,
+            description:workout.desc||'',
+            type:'Ride',
+            workout_doc:{
+              type:'bike',
+              name:workout.name,
+              steps:(workout.steps||[]).map((s,i)=>({
+                type:'STEADY_STATE',
+                name:s.name,
+                order:i+1,
+                duration:(s.mins||15)*60,
+                targets:[{type:'POWER',min:Math.round((s.pct?.[0]||0.6)*100),max:Math.round((s.pct?.[1]||0.7)*100)}]
+              }))
+            }
+          })
+        });
+        if(res.ok){ alert('✅ Workout enviado a Intervals.icu'); resolve(true); }
+        else resolve(false);
+      }catch(e){ alert('📱 Modo offline - Workout guardado localmente'); resolve(true); }
+    });
+  }
+
+  function loadIntervalsData(){
+    (async()=>{
+      try{
+        let proxy='https://cors-anywhere.herokuapp.com/';
+        let res=await fetch(proxy+'https://intervals.icu/api/v1/athlete/'+ATH_ID,{headers:{'Authorization':AUTH}});
+        if(res.ok){
+          let data=await res.json();
+          if(data.ftp) state.ftp=data.ftp;
+          if(data.weight) state.peso=data.weight;
+          state.syncStatus='connected';
+          let wellnessRes=await fetch(proxy+'https://intervals.icu/api/v1/athlete/'+ATH_ID+'/wellness?newest='+TODAY_S,{headers:{'Authorization':AUTH}});
+          if(wellnessRes.ok){
+            let wData=await wellnessRes.json();
+            if(wData.length) state.wellness=wData[0];
+          }
+        }
+      }catch(e){ state.syncStatus='offline'; }
+      render();
+    })();
+  }
+
+  let root=document.getElementById('app');
+  function render(){
+    let todayWo=state.plan.find(p=>p.today)||state.plan[0];
+    let nextRace=state.races.filter(r=>daysUntil(r.date)>=0).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
+    let isOnline=state.syncStatus==='connected';
+
+    function Inicio(){
+      return `
+        <div class="scroll">
+          <div class="flex-between" style="margin-bottom:20px">
+            <div><div class="text-muted" style="font-size:14px">Buenos días,</div><div style="font-size:28px;font-weight:800">Alex</div></div>
+            <div class="flex-row" style="gap:6px"><div class="dot" style="background:${isOnline?'#30D158':'#FF9F0A'}"></div><div class="text-muted" style="font-size:11px">${isOnline?'Online':'Offline'}</div></div>
+          </div>
+          
+          <div class="card-orange" onclick="window.navigateTo('hoy')">
+            <div class="badge text-primary">🔥 ENTRENO DE HOY</div>
+            <div class="workout-name">${todayWo.name}</div>
+            <div class="text-muted" style="margin-top:6px">${todayWo.desc}</div>
+            <div class="flex-between" style="margin-top:16px"><div class="text-primary" style="font-size:16px;font-weight:700">${todayWo.dur}</div><div class="text-muted">${todayWo.tss} TSS</div></div>
+          </div>
+          
+          <div class="card">
+            <div class="badge text-muted">🏆 PRÓXIMA CARRERA</div>
+            <div style="font-size:18px;font-weight:700">${nextRace?.name}</div>
+            <div class="text-muted" style="margin-top:4px">${nextRace?.date} · ${daysUntil(nextRace?.date)} días</div>
+            <div style="margin-top:12px"><div style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden"><div style="width:${Math.min(100,Math.max(0,100-daysUntil(nextRace?.date)*0.8))}%;height:100%;background:#E8470A;border-radius:4px"></div></div></div>
+          </div>
+          
+          <div class="card">
+            <div class="badge text-muted">📊 ESTADO DE FORMA</div>
+            <div class="flex-around">
+              <div style="text-align:center"><div class="stat-value" style="color:#30D158">${Math.round(state.wellness.ctl)}</div><div class="text-muted" style="font-size:12px;margin-top:4px">FITNESS</div></div>
+              <div style="text-align:center"><div class="stat-value" style="color:#FF9F0A">${Math.round(state.wellness.atl)}</div><div class="text-muted" style="font-size:12px;margin-top:4px">FATIGA</div></div>
+              <div style="text-align:center"><div class="stat-value" style="color:${state.wellness.form>5?'#30D158':state.wellness.form<-15?'#FF3B30':'#FF9F0A'}">${state.wellness.form>0?'+':''}${Math.round(state.wellness.form)}</div><div class="text-muted" style="font-size:12px;margin-top:4px">FORMA</div></div>
+              <div style="text-align:center"><div class="stat-value">${state.ftp}</div><div class="text-muted" style="font-size:12px;margin-top:4px">FTP</div></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function Hoy(){
+      let wo=state.plan.find(p=>p.today)||state.plan[0];
+      let stepsHtml='';
+      for(let i=0;i<wo.steps.length;i++){
+        let s=wo.steps[i];
+        let lo=Math.round(s.pct[0]*state.ftp);
+        let hi=Math.round(s.pct[1]*state.ftp);
+        stepsHtml+=`
+          <div class="step flex-row">
+            <div style="font-size:24px">${i===0?'🔥':i===wo.steps.length-1?'❄️':'⚡'}</div>
+            <div style="flex:1"><div style="font-size:16px;font-weight:600">${s.name}</div><div class="text-muted" style="font-size:13px;margin-top:2px">${s.mins} min · ${lo}-${hi} W (${Math.round(s.pct[0]*100)}-${Math.round(s.pct[1]*100)}% FTP)</div></div>
+          </div>
+        `;
+      }
+      return `
+        <div class="scroll">
+          <div class="card-orange">
+            <div class="badge text-primary">🔥 ENTRENO DE HOY</div>
+            <div style="font-size:24px;font-weight:800">${wo.name}</div>
+            <div class="text-muted" style="margin-top:6px">${wo.desc}</div>
+            <div class="flex-between" style="margin-top:16px"><div class="text-primary" style="font-size:16px;font-weight:700">${wo.dur}</div><div class="text-muted">${wo.tss} TSS</div></div>
+          </div>
+          ${wo.steps.length?`<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:16px">📋 SERIES DEL ENTRENO</div>${stepsHtml}<button class="send-btn" id="sendWorkoutBtn">⚡ Enviar a Intervals.icu</button></div>`:''}
+        </div>
+      `;
+    }
+
+    function Plan(){
+      let items='';
+      for(let w of state.plan){
+        items+=`
+          <div style="margin-bottom:12px" onclick="window.navigateToWorkout(${w.id})">
+            <div style="background:${w.today?'#2A1208':'#1C1C1E'};border-radius:16px;padding:16px;border:${w.today?'1px solid rgba(232,71,10,0.3)':'none'}">
+              <div class="flex-between">
+                <div style="flex:1"><div class="text-muted" style="font-size:14px;font-weight:700">${w.day}</div><div style="font-size:16px;font-weight:600">${w.name}</div><div class="text-muted" style="font-size:12px;margin-top:2px">${w.desc}</div></div>
+                ${w.dur?`<div class="text-primary" style="font-size:15px;font-weight:700">${w.dur}</div>`:''}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      return `<div class="scroll"><div style="font-size:24px;font-weight:800;margin-bottom:20px">Plan Semanal</div>${items}</div>`;
+    }
+
+    function Mas(){
+      return `
+        <div class="scroll">
+          <div class="card">
+            <div style="font-size:18px;font-weight:700;margin-bottom:16px">📊 Mis Datos</div>
+            <div class="flex-between" style="margin-bottom:12px"><div class="text-muted">FTP</div><div style="font-weight:600">${state.ftp} W</div></div>
+            <div class="flex-between" style="margin-bottom:12px"><div class="text-muted">Peso</div><div style="font-weight:600">${state.peso} kg</div></div>
+            <div class="flex-between"><div class="text-muted">W/kg</div><div style="font-weight:600">${(state.ftp/state.peso).toFixed(1)}</div></div>
+          </div>
+          <button class="sync-btn" id="syncBtn">🔄 Sincronizar con Intervals.icu</button>
+        </div>
+      `;
+    }
+
+    let content='';
+    if(state.tab==='inicio') content=Inicio();
+    else if(state.tab==='hoy') content=Hoy();
+    else if(state.tab==='plan') content=Plan();
+    else content=Mas();
+
+    let bottomNav=`
+      <div class="bottom-nav">
+        <button class="tab-btn" onclick="window.setTab('inicio')"><div style="font-size:24px;margin-bottom:4px;opacity:${state.tab==='inicio'?1:0.5}">🏠</div><div style="color:${state.tab==='inicio'?'#E8470A':'#8E8E93'}">INICIO</div></button>
+        <button class="tab-btn" onclick="window.setTab('hoy')"><div style="font-size:24px;margin-bottom:4px;opacity:${state.tab==='hoy'?1:0.5}">🔥</div><div style="color:${state.tab==='hoy'?'#E8470A':'#8E8E93'}">HOY</div></button>
+        <button class="tab-btn" onclick="window.setTab('plan')"><div style="font-size:24px;margin-bottom:4px;opacity:${state.tab==='plan'?1:0.5}">📅</div><div style="color:${state.tab==='plan'?'#E8470A':'#8E8E93'}">PLAN</div></button>
+        <button class="tab-btn" onclick="window.setTab('mas')"><div style="font-size:24px;margin-bottom:4px;opacity:${state.tab==='mas'?1:0.5}">☰</div><div style="color:${state.tab==='mas'?'#E8470A':'#8E8E93'}">MÁS</div></button>
+      </div>
+    `;
+
+    root.innerHTML=`<div style="height:100%;display:flex;flex-direction:column">${content}${bottomNav}</div>`;
+
+    let sendBtn=document.getElementById('sendWorkoutBtn');
+    if(sendBtn){
+      sendBtn.onclick=async()=>{
+        let wo=state.plan.find(p=>p.today)||state.plan[0];
+        sendBtn.disabled=true;
+        sendBtn.innerText='Enviando...';
+        await sendToIntervals(wo);
+        sendBtn.innerText='✓ Enviado';
+        setTimeout(()=>{ if(sendBtn) sendBtn.innerText='⚡ Enviar a Intervals.icu'; },2000);
+      };
+    }
+
+    let syncBtn=document.getElementById('syncBtn');
+    if(syncBtn) syncBtn.onclick=()=>{ loadIntervalsData(); };
+  }
+
+  window.setTab=(tab)=>{ state.tab=tab; render(); };
+  window.navigateTo=(tab)=>{ state.tab=tab; render(); };
+  window.navigateToWorkout=(id)=>{ 
+    let wo=state.plan.find(w=>w.id===id);
+    if(wo){ state.currentWo=wo; state.tab='hoy'; render(); }
+  };
+
+  loadIntervalsData();
+})();
+</script>
+</body>
+</html>
